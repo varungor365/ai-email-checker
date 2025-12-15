@@ -106,8 +106,17 @@ async def main():
         logger.info("Press Ctrl+C to stop")
         logger.info("")
         
-        # Run bot
-        await bot.app.run_polling()
+        # Run bot (using initialize and run_polling properly)
+        async with bot.app:
+            await bot.app.start()
+            await bot.app.updater.start_polling()
+            
+            # Keep running until interrupted
+            stop_event = asyncio.Event()
+            try:
+                await stop_event.wait()
+            except (KeyboardInterrupt, asyncio.CancelledError):
+                logger.info("\n\n🛑 Shutdown signal received...")
     
     except KeyboardInterrupt:
         logger.info("\n\n🛑 Shutdown signal received...")
@@ -118,6 +127,12 @@ async def main():
     finally:
         # Cleanup
         logger.info("🧹 Cleaning up...")
+        if 'bot' in locals() and bot.app.running:
+            try:
+                await bot.app.updater.stop()
+                await bot.app.stop()
+            except:
+                pass
         if 'system' in locals():
             await system.stop()
         logger.info("✅ Shutdown complete")
