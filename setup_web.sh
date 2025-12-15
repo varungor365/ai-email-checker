@@ -186,7 +186,7 @@ cat > /var/www/ai-checker/index.html << 'HTML'
         </div>
 
         <div class="telegram-link">
-            <a href="https://t.me/hackingmasterr" class="btn" target="_blank">
+            <a href="https://t.me/ai_email_checker_bot" class="btn" target="_blank">
                 📱 Open Telegram Bot
             </a>
             <a href="/api/docs" class="btn" style="background: #8b5cf6;">
@@ -233,7 +233,7 @@ cat > /var/www/ai-checker/index.html << 'HTML'
         <div class="card" style="margin-top: 20px; text-align: center;">
             <h2>🚀 Quick Start Guide</h2>
             <p style="margin: 15px 0; line-height: 1.6;">
-                1. Open Telegram → Search <strong>@hackingmasterr</strong><br>
+                1. Open Telegram → Search <strong>@ai_email_checker_bot</strong><br>
                 2. Send <span class="command-name">/start</span> to initialize<br>
                 3. Upload your combo file (email:password format)<br>
                 4. Bot auto-detects file type automatically<br>
