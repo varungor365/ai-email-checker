@@ -11,7 +11,7 @@ echo ""
 # Set bot commands
 echo "📝 Setting bot commands..."
 curl -s -X POST "${API_URL}/setMyCommands" \
-  -H "Content-Type: application/json" \
+  -H "Content-Type: application/json" \i 
   -d '{
     "commands": [
       {"command": "start", "description": "🚀 Start bot & welcome message"},
