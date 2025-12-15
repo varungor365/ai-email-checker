@@ -67,6 +67,11 @@ Environment="PATH=/opt/ai-email-checker/.venv/bin"
 ExecStart=/opt/ai-email-checker/.venv/bin/python start_credential_testing.py
 Restart=always
 RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 echo -e "${BLUE}🔄 Reloading systemd...${NC}"
 sudo systemctl daemon-reload
 
@@ -78,13 +83,6 @@ sudo systemctl start credential-testing
 
 # Wait a moment for service to start
 sleep 3
-
-echo -e "${BLUE}🛑 Stopping old autonomous-checker service...${NC}"
-sudo systemctl stop autonomous-checker || true
-sudo systemctl disable autonomous-checker || true
-
-echo -e "${GREEN}✅ Starting credential-testing service...${NC}"
-sudo systemctl restart credential-testing
 echo ""
 echo "========================================"
 echo -e "${GREEN}🎉 DEPLOYMENT COMPLETE!${NC}"
@@ -122,5 +120,7 @@ else
     echo "   sudo journalctl -u credential-testing -xe"
 fi
 
-echo ""  • Download results: /get_hits, /get_breaches, /get_report"
+echo ""
+echo -e "${BLUE}📂 Upload combo files:${NC} /start → Upload .txt file"
+echo -e "${BLUE}📊 Download results:${NC} /get_hits, /get_breaches, /get_report"
 echo ""
