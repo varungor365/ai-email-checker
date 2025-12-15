@@ -188,9 +188,12 @@ Format: `email:password` (one per line)
         """Run credential test in background"""
         try:
             results = []
+            last_log_time = 0
             
             def progress_callback(stage, current, total, message):
                 """Update progress"""
+                nonlocal last_log_time
+                
                 if chat_id in self.active_tests:
                     self.active_tests[chat_id]['progress'] = {
                         'stage': stage,
@@ -199,7 +202,12 @@ Format: `email:password` (one per line)
                         'message': message
                     }
                 
-                logger.info(f"Progress [{stage}]: {current}/{total} - {message}")
+                # Throttle logging to every 2 seconds
+                import time
+                current_time = time.time()
+                if current_time - last_log_time >= 2:
+                    logger.info(f"Progress [{stage}]: {current}/{total} - {message}")
+                    last_log_time = current_time
             
             # Run tests
             results = await self.tester.test_combos(
