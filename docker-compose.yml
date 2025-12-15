@@ -1,0 +1,268 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: ai-checker-postgres
+    environment:
+      POSTGRES_DB: ai_email_checker
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-checker-network
+
+  # MongoDB (Results Storage)
+  mongodb:
+    image: mongo:7
+    container_name: ai-checker-mongo
+    environment:
+      MONGO_INITDB_DATABASE: ai_email_checker_results
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-checker-network
+
+  # Redis (Task Queue & Cache)
+  redis:
+    image: redis:7-alpine
+    container_name: ai-checker-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-checker-network
+
+  # Ollama (Local LLM)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai-checker-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - ai-checker-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # API Service (FastAPI Backend)
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    container_name: ai-checker-api
+    environment:
+      - POSTGRES_HOST=postgres
+      - MONGO_HOST=mongodb
+      - REDIS_HOST=redis
+      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-mistral}
+      - AI_ENABLED=${AI_ENABLED:-true}
+    env_file:
+      - .env
+    ports:
+      - "8001:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    volumes:
+      - ./api:/app/api
+      - ./core:/app/core
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+      - ./results:/app/results
+    networks:
+      - ai-checker-network
+    restart: unless-stopped
+
+  # AI Brain (Orchestration Service)
+  brain:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.brain
+    container_name: ai-checker-brain
+    environment:
+      - POSTGRES_HOST=postgres
+      - MONGO_HOST=mongodb
+      - REDIS_HOST=redis
+      - OLLAMA_HOST=http://ollama:11434
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    volumes:
+      - ./core:/app/core
+      - ./api:/app/api
+      - ./config:/app/config
+      - ./logs:/app/logs
+    networks:
+      - ai-checker-network
+    restart: unless-stopped
+
+  # Worker 1
+  worker-1:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.worker
+    container_name: ai-checker-worker-1
+    environment:
+      - WORKER_ID=worker-1
+      - POSTGRES_HOST=postgres
+      - MONGO_HOST=mongodb
+      - REDIS_HOST=redis
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      brain:
+        condition: service_started
+    volumes:
+      - ./workers:/app/workers
+      - ./checkers:/app/checkers
+      - ./identity:/app/identity
+      - ./intelligence:/app/intelligence
+      - ./logs:/app/logs
+    networks:
+      - ai-checker-network
+    restart: unless-stopped
+
+  # Worker 2
+  worker-2:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.worker
+    container_name: ai-checker-worker-2
+    environment:
+      - WORKER_ID=worker-2
+      - POSTGRES_HOST=postgres
+      - MONGO_HOST=mongodb
+      - REDIS_HOST=redis
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      brain:
+        condition: service_started
+    volumes:
+      - ./workers:/app/workers
+      - ./checkers:/app/checkers
+      - ./identity:/app/identity
+      - ./intelligence:/app/intelligence
+      - ./logs:/app/logs
+    networks:
+      - ai-checker-network
+    restart: unless-stopped
+
+  # Prometheus (Metrics)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ai-checker-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - ai-checker-network
+
+  # Grafana (Visualization)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ai-checker-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=redis-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - ai-checker-network
+
+  # Telegram Bot (Remote Control)
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: bot/Dockerfile
+    container_name: ai-checker-telegram-bot
+    env_file: .env
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_ADMIN_IDS=${TELEGRAM_ADMIN_IDS}
+    volumes:
+      - ./bot:/app/bot
+      - ./core:/app/core
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+      - ./results:/app/results
+    depends_on:
+      - api
+      - redis
+    networks:
+      - ai-checker-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  mongo_data:
+  redis_data:
+  ollama_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  ai-checker-network:
+    driver: bridge

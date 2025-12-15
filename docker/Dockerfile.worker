@@ -1,0 +1,36 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies + Playwright dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libpq-dev \
+    wget \
+    gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install Playwright browsers
+RUN playwright install --with-deps chromium firefox
+
+# Copy application code
+COPY core/ ./core/
+COPY workers/ ./workers/
+COPY checkers/ ./checkers/
+COPY identity/ ./identity/
+COPY intelligence/ ./intelligence/
+COPY solvers/ ./solvers/
+COPY config/ ./config/
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/data /app/cache
+
+# Start Celery worker
+CMD ["celery", "-A", "workers.tasks", "worker", "--loglevel=info", "--concurrency=4"]

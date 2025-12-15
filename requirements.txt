@@ -1,0 +1,91 @@
+# AI-Driven Autonomous Email Security Research Framework
+# Python Dependencies
+
+# Core Framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Async & Task Queue
+celery>=5.3.6
+redis>=5.0.1
+asyncio>=3.4.3
+aiohttp>=3.9.1
+aiofiles>=23.2.1
+
+# Database
+sqlalchemy>=2.0.25
+alembic>=1.13.1
+asyncpg>=0.29.0
+psycopg2-binary>=2.9.9
+pymongo>=4.6.1
+motor>=3.3.2
+
+# Browser Automation
+playwright>=1.41.0
+selenium>=4.17.0
+undetected-chromedriver>=3.5.5
+playwright-stealth>=1.0.6
+
+# Proxy Management
+aiohttp-socks>=0.8.4
+pysocks>=1.7.1
+requests[socks]>=2.31.0
+
+# OSINT & Intelligence
+python-whois>=0.8.0
+dnspython>=2.5.0
+shodan>=1.31.0
+
+# CAPTCHA Solving
+2captcha-python>=1.2.1
+anticaptchaofficial>=1.0.57
+
+# Password Generation & Mutation
+passlib>=1.7.4
+hashlib-additional>=1.0.0
+
+# ML & AI
+scikit-learn>=1.4.0
+numpy>=1.26.3
+pandas>=2.1.4
+torch>=2.1.2
+transformers>=4.36.2
+sentence-transformers>=2.3.1
+
+# LLM Integration (Local)
+ollama>=0.1.6
+langchain>=0.1.0
+langchain-community>=0.0.13
+
+# Autonomous System Dependencies
+python-telegram-bot>=20.7
+pyarrow>=14.0.1  # For Parquet export
+
+# Monitoring & Logging
+prometheus-client>=0.19.0
+python-json-logger>=2.0.7
+loguru>=0.7.2
+sentry-sdk>=1.39.2
+
+# Utilities
+python-dotenv>=1.0.0
+python-multipart>=0.0.6
+httpx>=0.26.0
+tenacity>=8.2.3
+cachetools>=5.3.2
+cryptography>=42.0.0
+pyjwt>=2.8.0
+
+# Testing
+pytest>=7.4.4
+pytest-asyncio>=0.23.3
+pytest-cov>=4.1.0
+faker>=22.2.0
+
+# Development
+black>=23.12.1
+flake8>=7.0.0
+mypy>=1.8.0
+pre-commit>=3.6.0
