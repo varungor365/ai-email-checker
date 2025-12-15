@@ -78,7 +78,9 @@ class MegaAuthenticator:
         Returns:
             List of AccountResult objects
         """
-        logger.info(f"🔥 Starting MEGA validation: {len(accounts)} accounts with {self.max_threads} threads")
+        # Reduce threads to avoid MEGA rate limits (max 10 concurrent)
+        actual_threads = min(self.max_threads, 10)
+        logger.info(f"🔥 Starting MEGA validation: {len(accounts)} accounts with {actual_threads} threads (rate limited)")
         
         self.stats = {
             'total': len(accounts),
@@ -93,8 +95,8 @@ class MegaAuthenticator:
         
         results = []
         
-        # Use ThreadPoolExecutor for maximum concurrency
-        with ThreadPoolExecutor(max_workers=self.max_threads) as executor:
+        # Use ThreadPoolExecutor with reduced concurrency to avoid rate limits
+        with ThreadPoolExecutor(max_workers=actual_threads) as executor:
             futures = {}
             
             for idx, account in enumerate(accounts):
@@ -144,6 +146,9 @@ class MegaAuthenticator:
     def _check_single_account(self, account: Dict, position: int) -> Optional[AccountResult]:
         """Check a single MEGA account"""
         start_time = time.time()
+        
+        # Add delay to avoid rate limiting (0.5 sec between each check)
+        time.sleep(0.5)
         
         try:
             email = account.get('email', '').strip()
@@ -246,12 +251,22 @@ class MegaAuthenticator:
             except Exception as login_error:
                 # Login failed
                 error_str = str(login_error).lower()
-                logger.debug(f"❌ FAIL: {email} - {error_str}")
                 
-                # Check if it's a rate limit
-                if 'temporarily' in error_str or 'rate' in error_str or 'banned' in error_str:
-                    logger.warning(f"Rate limit detected for {email}")
-                    time.sleep(1)
+                # Check if it's a rate limit - sleep longer
+                if 'temporarily' in error_str or 'rate' in error_str or 'banned' in error_str or 'too many' in error_str:
+                    logger.warning(f"⏸️  MEGA rate limit detected - waiting 5 seconds")
+                    time.sleep(5)
+                    return AccountResult(
+                        email=email,
+                        password=password,
+                        status='error',
+                        error='Rate limited by MEGA',
+                        position=position,
+                        timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                        response_time=time.time() - start_time
+                    )
+                
+                logger.debug(f"❌ FAIL: {email} - {error_str}")
                 
                 return AccountResult(
                     email=email,
