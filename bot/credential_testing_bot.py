@@ -158,12 +158,22 @@ Format: `email:password` (one per line)
                 file_path.unlink()
                 return
             
+            # Determine if we should check breaches (rate limited to 40/min)
+            # For large lists, breach checking takes too long
+            check_breaches = len(combos) <= 1000  # Only check breaches for small lists
+            
+            breach_msg = ""
+            if not check_breaches:
+                breach_msg = f"\n⚠️ **Breach checking disabled** (list too large: {len(combos):,} combos)\n   Only MEGA validation will run"
+            
             # Start testing
             await update.message.reply_text(
                 f"✅ **Combo file received!**\n\n"
-                f"📊 Found {len(combos):,} combos\n\n"
+                f"📊 Found {len(combos):,} combos\n"
+                f"🔍 MEGA validation: ✅ Enabled\n"
+                f"🔥 Breach detection: {'✅ Enabled' if check_breaches else '❌ Disabled (>1000 combos)'}\n\n"
                 f"🚀 Starting credential testing...\n"
-                f"Use /status to check progress",
+                f"Use /status to check progress{breach_msg}",
                 parse_mode=ParseMode.MARKDOWN
             )
             
@@ -172,7 +182,8 @@ Format: `email:password` (one per line)
                 'combos': combos,
                 'file_path': file_path,
                 'start_time': datetime.now(),
-                'progress': {}
+                'progress': {},
+                'check_breaches': check_breaches
             }
             
             # Run test in background
@@ -213,7 +224,7 @@ Format: `email:password` (one per line)
             results = await self.tester.test_combos(
                 combos,
                 check_mega=True,
-                check_breaches=True,
+                check_breaches=self.active_tests[chat_id].get('check_breaches', False),
                 progress_callback=progress_callback
             )
             
